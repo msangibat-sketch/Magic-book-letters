@@ -653,9 +653,12 @@ const PS = isMobile ? 0.45 : 1.0;
 const pc = (n) => Math.max(2, Math.round(n * PS));
 
 // ═══════════════════════════════════════════════════════════════
-//  GITHUB LETTER LIBRARY
+//  LETTER LIBRARY
 // ═══════════════════════════════════════════════════════════════
-const GITHUB_LETTERS = 'https://raw.githubusercontent.com/msangibat-sketch/Magic-book-letters/main';
+// The letter PNGs live in this same repo, so they're served from this site
+// (Netlify's CDN) rather than raw.githubusercontent.com, which isn't meant
+// for live websites.
+const GITHUB_LETTERS = '';
 
 // Mongolian Cyrillic → Latin filename key
 const CYRILLIC_MAP = {
@@ -695,12 +698,12 @@ function buildLetterUrls(name, variantOverrides={}) {
     const isHyphen = char === '-';
     if (isHyphen) {
       nextIsCapital = true;
-      return { url: `${GITHUB_LETTERS}/hyphen-1-u.png`, isCapital: false, isHyphen: true };
+      return { url: `${GITHUB_LETTERS}/hyphen-1-u.png`, fallbacks: [], isCapital: false, isHyphen: true };
     }
     const key = CYRILLIC_MAP[char] || CYRILLIC_MAP[char.toLowerCase()];
     const isCapital = nextIsCapital;
     nextIsCapital = false;
-    if (!key) return { url: null, isCapital, isHyphen: false };
+    if (!key) return { url: null, fallbacks: [], isCapital, isHyphen: false };
     const suffix = isCapital ? 'u' : 'l';
     const countKey = `${key}-${suffix}`;  // e.g. 'e-u' or 'e-l' — separate counters
     usageCounts[countKey] = (usageCounts[countKey] || 0) + 1;
@@ -709,7 +712,14 @@ function buildLetterUrls(name, variantOverrides={}) {
     const variant = Array.isArray(seq)
       ? seq[Math.min(occurrenceIdx, seq.length - 1)]
       : usageCounts[countKey];
-    return { url: `${GITHUB_LETTERS}/${key}-${variant}-${suffix}.png`, isCapital, isHyphen: false };
+    // If this exact art doesn't exist, try the other case of the same
+    // variant (same rule as the print book: many letters look the same in
+    // both cases), then variant 1 in either case -- never an empty slot.
+    const other = suffix === 'u' ? 'l' : 'u';
+    const fallbacks = [`${key}-${variant}-${other}`, `${key}-1-${suffix}`, `${key}-1-${other}`]
+      .filter((f, i, all) => f !== `${key}-${variant}-${suffix}` && all.indexOf(f) === i)
+      .map(f => `${GITHUB_LETTERS}/${f}.png`);
+    return { url: `${GITHUB_LETTERS}/${key}-${variant}-${suffix}.png`, fallbacks, isCapital, isHyphen: false };
   });
 }
 // ═══════════════════════════════════════════════════════════════
@@ -1531,7 +1541,14 @@ function NightFinale({ childName, nameArt, gender, variantOverrides={}, onComple
                 className={`letter-img${slot.isCapital ? ' letter-img-first' : ''}${slot.isHyphen ? ' letter-img-hyphen' : ''}`}
                 style={{'--letter-w': slotW}}
                 draggable="false"
-                onError={e=>{ e.target.style.opacity='0'; }}
+                onError={e=>{
+                  // Missing art: step through the fallbacks, hide only if none exist.
+                  const img = e.target;
+                  const tried = Number(img.dataset.fallback || 0);
+                  const next = (slot.fallbacks || [])[tried];
+                  if (next) { img.dataset.fallback = tried + 1; img.src = next; }
+                  else { img.style.opacity = '0'; }
+                }}
               />
             </div>
           );
