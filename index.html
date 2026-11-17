@@ -49,6 +49,17 @@ button,[role="button"],iframe{pointer-events:auto;}
 .scene-layer{position:absolute;inset:0;opacity:0;transition:opacity 1.6s var(--ease);}
 .scene-layer.is-active{opacity:1;}
 .scene-bg{position:absolute;inset:0;background-size:cover;background-position:center 60%;background-repeat:no-repeat;animation:scene-breathe 30s ease-in-out infinite alternate;}
+/* New Year: frosty white/ice-blue version of the warm sparkles and glow dots */
+.winter-glow{position:absolute;inset:0;pointer-events:none;}
+.winter-glow .day-sparkle{background:radial-gradient(circle,#fff 0%,rgba(225,240,255,.95) 40%,transparent 100%);box-shadow:0 0 var(--sg,8px) rgba(255,255,255,.95),0 0 calc(var(--sg,8px) * 2) rgba(160,205,255,.5);}
+/* New Year background: always anchored to the bottom so the snowy hills
+   show; on narrow (portrait) screens shifted right to keep the bird in view. */
+.newyear-bg{background-position:center bottom;}
+@media (max-aspect-ratio:1/1){
+  .newyear-bg{background-position:88% calc(100% - 14vh);background-color:#e4e1d8;}
+  /* soft snow below the lifted picture, blended into its bottom edge */
+  .newyear-bg::after{content:'';position:absolute;left:0;right:0;bottom:0;height:22vh;background:linear-gradient(to bottom,rgba(221,216,201,0) 0%,#e0dccf 38%,#e8e6e0 100%);}
+}
 @keyframes scene-breathe{0%{transform:scale(1) translateY(0);}100%{transform:scale(1.05) translateY(-1.2%);}}
 .watercolor-grain{position:absolute;inset:0;background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='200'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' seed='3'/><feColorMatrix values='0 0 0 0 0.95 0 0 0 0 0.85 0 0 0 0 0.70 0 0 0 0.4 0'/></filter><rect width='100%' height='100%' filter='url(%23n)' opacity='0.5'/></svg>");mix-blend-mode:soft-light;opacity:0.5;pointer-events:none;}
 .night-bg-img{position:absolute;inset:0;background-image:url('assets/world-night.png');background-size:cover;background-position:center 55%;}
@@ -1022,6 +1033,38 @@ function Petals({ hues=[340,30,280], count=14 }) {
   );
 }
 
+// New Year edition: links from the dashboard carry ?edition=newyear for
+// New Year orders. Those get the winter background and falling snow;
+// every other link keeps the classic meadow, petals and leaves.
+const IS_NEW_YEAR = new URLSearchParams(location.search).get('edition') === 'newyear';
+
+function Snowflakes({ count=30 }) {
+  const flakes=useMemo(()=>[...Array(count)].map((_,i)=>{
+    const seed=i*257+31,r=n=>((seed*n)%1000)/1000;
+    const crystal=i%4===0;
+    return{id:i,crystal,x:-5+r(3)*110,y:-15+r(5)*30,size:crystal?20+r(7)*14:8+r(7)*10,dur:18+r(11)*20,delay:r(13)*36,drift:-90+r(17)*180,rot:r(19)*360,rotSpeed:10+r(23)*14,opacity:.7+r(29)*.3,blur:crystal?0:r(31)*1.2};
+  }),[count]);
+  return(
+    <div className="world-petals" aria-hidden="true">
+      {flakes.map(f=>(
+        <svg key={f.id} className="petal" viewBox="0 0 24 24" style={{left:`${f.x}%`,top:`${f.y}%`,width:`${f.size}px`,height:`${f.size}px`,animationDuration:`${f.dur}s, ${f.rotSpeed}s`,animationDelay:`${-f.delay}s, ${-f.delay*.3}s`,'--drift':`${f.drift}px`,'--rot-start':`${f.rot}deg`,opacity:f.opacity,filter:`drop-shadow(0 0 2px rgba(120,150,200,.45))${f.blur?` blur(${f.blur.toFixed(1)}px)`:''}`}}>
+          {f.crystal
+            ? <g stroke="#fff" strokeWidth="1.6" strokeLinecap="round" fill="none">
+                {[0,60,120].map(a=>(
+                  <g key={a} transform={`rotate(${a} 12 12)`}>
+                    <line x1="12" y1="2" x2="12" y2="22"/>
+                    <polyline points="9,5 12,7 15,5"/>
+                    <polyline points="9,19 12,17 15,19"/>
+                  </g>
+                ))}
+              </g>
+            : <circle cx="12" cy="12" r="10" fill="#fff"/>}
+        </svg>
+      ))}
+    </div>
+  );
+}
+
 function Leaves({ count=8, hues=[120,140,160,80] }) {
   const leaves=useMemo(()=>[...Array(count)].map((_,i)=>{
     const seed=i*311+17,r=n=>((seed*n)%1000)/1000;
@@ -1151,6 +1194,20 @@ function Sunrays({ tilt=-8 }) {
 //  SCENE BACKGROUNDS
 // ═══════════════════════════════════════════════════════════════
 function MorningBg() {
+  if (IS_NEW_YEAR) return(
+    <>
+      {/* bottom-anchored: the snowy hills always show, the sky is what gets cropped */}
+      <div className="scene-bg morning-bg newyear-bg" style={{backgroundImage:'url(assets/world-newyear.jpg)'}}/>
+      <BokehBlobs count={pc(9)} hues={[200,210,45,220,50]} opacity={.24}/>
+      <Motes count={pc(24)} opacity={.55} hues={[200,45,210,50,190,40]}/>
+      <DaySparkles count={pc(10)}/>
+      <div className="winter-glow">
+        <DaySparkles count={pc(14)}/>
+        <TinyGlowDots count={pc(55)}/>
+      </div>
+      <Snowflakes count={pc(90)}/>
+    </>
+  );
   return(
     <>
       <div className="scene-bg morning-bg" style={{backgroundImage:'url(assets/world-meadow.png)',backgroundPosition:'center 60%'}}/>
@@ -1452,7 +1509,9 @@ function FarewellPage({ childName, animalName, gender, onContinue }) {
         {/* Atmosphere — petals, sparkles, tiny dots only. No bokeh blobs. */}
         <div style={{position:'absolute',inset:0,pointerEvents:'none',zIndex:1}}>
           <Motes count={pc(16)} hue={30} opacity={.35} hues={[30,340,350,20,50]}/>
-          <Petals hues={[340,20,350,30,60]} count={pc(14)}/>
+          {IS_NEW_YEAR
+            ? <Snowflakes count={pc(22)}/>
+            : <Petals hues={[340,20,350,30,60]} count={pc(14)}/>}
           <TinyGlowDots count={pc(65)} hue={38} hueRange={18}/>
         </div>
         <div className="farewell-content">
