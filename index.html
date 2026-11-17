@@ -1042,7 +1042,7 @@ function Snowflakes({ count=30 }) {
   const flakes=useMemo(()=>[...Array(count)].map((_,i)=>{
     const seed=i*257+31,r=n=>((seed*n)%1000)/1000;
     const crystal=i%4===0;
-    return{id:i,crystal,x:-5+r(3)*110,y:-15+r(5)*30,size:crystal?20+r(7)*14:8+r(7)*10,dur:18+r(11)*20,delay:r(13)*36,drift:-90+r(17)*180,rot:r(19)*360,rotSpeed:10+r(23)*14,opacity:.7+r(29)*.3,blur:crystal?0:r(31)*1.2};
+    return{id:i,crystal,x:-5+r(3)*110,y:-15+r(5)*30,size:crystal?20+r(7)*14:8+r(7)*10,dur:40+r(11)*35,delay:r(13)*75,drift:-70+r(17)*140,rot:r(19)*360,rotSpeed:16+r(23)*20,opacity:.7+r(29)*.3,blur:crystal?0:r(31)*1.2};
   }),[count]);
   return(
     <div className="world-petals" aria-hidden="true">
@@ -1200,7 +1200,8 @@ function MorningBg() {
       <div className="scene-bg morning-bg newyear-bg" style={{backgroundImage:'url(assets/world-newyear.jpg)'}}/>
       <BokehBlobs count={pc(9)} hues={[200,210,45,220,50]} opacity={.24}/>
       <Motes count={pc(24)} opacity={.55} hues={[200,45,210,50,190,40]}/>
-      <DaySparkles count={pc(10)}/>
+      <DaySparkles count={pc(24)}/>
+      <TinyGlowDots count={pc(45)}/>
       <div className="winter-glow">
         <DaySparkles count={pc(14)}/>
         <TinyGlowDots count={pc(55)}/>
